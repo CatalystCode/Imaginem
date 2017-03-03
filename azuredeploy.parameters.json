@@ -1,0 +1,45 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "branch": {
+      "value": "master"
+    },
+    "pipelineDefinition": {
+      "value": "generalclassification,ocr,facedetection,facecrop,faceprint,facematch,pipelineoutput"
+    },
+    "faceApiKey": {
+      "value": "<YOUR_FACE_API_KEY>"
+    },
+    "visionApiKey": {
+      "value": "<YOUR_VISION_API_KEY>"
+    },
+    "administratorLogin": {
+      "value": "imaginemUser"
+    },
+    "administratorLoginPassword": {
+      "value": "imaginem:2PW"
+    },
+    "collation": {
+      "value": "SQL_Latin1_General_CP1_CI_AS"
+    },
+    "edition": {
+      "value": "Basic"
+    },
+    "maxSizeBytes": {
+      "value": "1073741824"
+    },
+    "requestedServiceObjectiveName": {
+      "value": "Basic"
+    },
+    "skuName": {
+      "value": "S2"
+    },
+    "skuCapacity": {
+      "value": 1
+    },
+    "deploymentPostFix": {
+      "value": "prod"
+    }
+  }
+}

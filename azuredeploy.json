@@ -1,0 +1,392 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "branch": {
+      "type": "string"
+    },
+    "pipelineDefinition": {
+      "type": "string"
+    },
+    "faceApiKey": {
+      "type": "string"
+    },
+    "visionApiKey": {
+      "type": "string"
+    },
+    "administratorLogin": {
+      "type": "string"
+    },
+    "administratorLoginPassword": {
+      "type": "securestring"
+    },
+    "collation": {
+      "type": "string",
+      "defaultValue": "SQL_Latin1_General_CP1_CI_AS"
+    },
+    "edition": {
+      "type": "string",
+      "defaultValue": "Basic",
+      "allowedValues": [
+        "Basic",
+        "Standard",
+        "Premium"
+      ],
+      "metadata": {
+        "description": "The type of database to create."
+      }
+    },
+    "maxSizeBytes": {
+      "type": "string",
+      "defaultValue": "1073741824"
+    },
+    "requestedServiceObjectiveName": {
+      "type": "string",
+      "defaultValue": "Basic",
+      "allowedValues": [
+        "Basic",
+        "S0",
+        "S1",
+        "S2",
+        "P1",
+        "P2",
+        "P3"
+      ],
+      "metadata": {
+        "description": "Describes the performance level for Edition"
+      }
+    },
+    "skuName": {
+      "type": "string",
+      "defaultValue": "F1",
+      "allowedValues": [
+        "F1",
+        "D1",
+        "B1",
+        "B2",
+        "B3",
+        "S1",
+        "S2",
+        "S3",
+        "P1",
+        "P2",
+        "P3",
+        "P4"
+      ],
+      "metadata": {
+        "description": "Describes plan's pricing tier and instance size. Check details at https://azure.microsoft.com/en-us/pricing/details/app-service/"
+      }
+    },
+    "skuCapacity": {
+      "type": "int",
+      "defaultValue": 1,
+      "minValue": 1,
+      "metadata": {
+        "description": "Describes geoTwit plan's instance count"
+      }
+    },
+    "deploymentPostFix": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "variables": {
+    "uniqueId": "[parameters('deploymentPostFix')]",
+    "hostingPlanName": "[toLower(concat('imaginemhostingplan', variables('uniqueId')))]",
+    "dataStorageAccountName": "[toLower(concat('imaginemdata', variables('uniqueId')))]",
+    "location": "[resourceGroup().location]",
+    "dashboardWebSiteName": "[concat('ImaginemDashboard-', variables('uniqueId'))]",
+    "functionsWebSiteName": "[concat('ImaginemFunctions-', variables('uniqueId'))]",
+    "servicesWebSiteName": "[concat('ImaginemServices-', variables('uniqueId'))]",
+    "sqlServerName": "[concat('imaginemsqlserver', variables('uniqueId'))]",
+    "databaseName": "imaginem"
+  },
+
+  "resources": [
+    {
+      "apiVersion": "2015-08-01",
+      "name": "[variables('hostingPlanName')]",
+      "type": "Microsoft.Web/serverfarms",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "displayName": "HostingPlan"
+      },
+      "sku": {
+        "name": "[parameters('skuName')]",
+        "capacity": "[parameters('skuCapacity')]"
+      },
+      "properties": {
+        "name": "[variables('hostingPlanName')]"
+      }
+    },
+    {
+      "apiVersion": "2015-08-01",
+      "name": "[variables('functionsWebSiteName')]",
+      "type": "Microsoft.Web/sites",
+      "kind": "functionapp",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "[concat('hidden-related:', resourceGroup().id, '/providers/Microsoft.Web/serverfarms/', variables('hostingPlanName'))]": "Resource",
+        "displayName": "FunctionsWebSite"
+      },
+      "properties": {
+        "name": "[variables('functionsWebSiteName')]",
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
+      },
+      "dependsOn": [
+        "[concat('Microsoft.Web/serverfarms/', variables('hostingPlanName'))]",
+        "[concat('Microsoft.Storage/storageAccounts/', variables('dataStorageAccountName'))]"
+      ],
+      "resources": [
+        {
+          "apiVersion": "2015-04-01",
+          "name": "web",
+          "type": "sourcecontrols",
+          "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageAccountName'))]",
+            "[concat('Microsoft.Web/Sites/', variables('functionsWebSiteName'), '/config/web')]",
+            "[concat('Microsoft.Web/Sites/', variables('functionsWebSiteName'), '/config/appsettings')]",
+            "[resourceId('Microsoft.Web/sites', variables('functionsWebSiteName'))]"
+          ],
+          "properties": {
+            "RepoUrl": "https://github.com/cloudbeatsch/Imaginem-Functions",
+            "branch": "[parameters('branch')]",
+            "IsManualIntegration": true
+          }
+        },
+        {
+          "apiVersion": "2015-08-01",
+          "name": "web",
+          "type": "config",
+          "dependsOn": [
+            "[concat('Microsoft.Web/sites/', variables('FunctionsWebSiteName'))]"
+          ],
+          "properties": {
+            "phpVersion": "5.5",
+            "netFrameworkVersion": "v4.6",
+            "use32BitWorkerProcess": true, /* 32-bit platform */
+            "webSocketsEnabled": true,
+            "alwaysOn": true,
+            "requestTracingEnabled": true, /* Failed request tracing, aka 'freb' */
+            "httpLoggingEnabled": true, /* IIS logs (aka Web server logging) */
+            "logsDirectorySizeLimit": 40, /* 40 MB limit for IIS logs */
+            "detailedErrorLoggingEnabled": true, /* Detailed error messages  */
+            "remoteDebuggingEnabled": false,
+            "remoteDebuggingVersion": "VS2015"
+          }
+        },
+        {
+          "name": "appsettings",
+          "type": "config",
+          "apiVersion": "2015-08-01",
+          "dependsOn": [
+            "[concat('Microsoft.Web/sites/', variables('functionsWebSiteName'))]"
+          ],
+          "tags": {
+            "displayName": "ApplicationSettings"
+          },
+          "properties": {
+            "WEBSITE_NODE_DEFAULT_VERSION": "6.5.0",
+            "FUNCTIONS_EXTENSION_VERSION": "~1",
+            "FACES_CONTAINER": "faces",
+            "VISION_API_KEY": "[parameters('visionApiKey')]",
+            "FACE_API_KEY": "[parameters('faceApiKey')]",
+            "SQL_CONNECTION_STRING":"[concat('Server=tcp:', variables('sqlserverName'), '.database.windows.net,1433;Initial Catalog=', variables('databaseName'), ';Persist Security Info=False;User ID=', parameters('administratorLogin'), ';Password=', parameters('administratorLoginPassword'), ';MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;')]",
+            "AzureWebJobsStorage": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('dataStorageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]",
+            "AzureWebJobsDashboard": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('dataStorageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]"
+          }
+        }
+      ]
+    },
+    {
+      "apiVersion": "2015-04-01",
+      "name": "[variables('dashboardWebSiteName')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageAccountName'))]"
+      ],
+      "resources": [
+        {
+          "apiVersion": "2015-04-01",
+          "name": "web",
+          "type": "sourcecontrols",
+          "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageAccountName'))]",
+            "[concat('Microsoft.Web/Sites/', variables('dashboardWebSiteName'), '/config/web')]",
+            "[concat('Microsoft.Web/Sites/', variables('dashboardWebSiteName'), '/config/appsettings')]",
+            "[resourceId('Microsoft.Web/sites', variables('dashboardWebSiteName'))]"
+          ],
+          "properties": {
+            "RepoUrl": "https://github.com/cloudbeatsch/Imaginem-Interface",
+            "branch": "[parameters('branch')]",
+            "IsManualIntegration": true
+          }
+        },
+        {
+          "apiVersion": "2015-04-01",
+          "name": "appsettings",
+          "type": "config",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('dashboardWebSiteName'))]",
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageAccountName'))]"
+          ],
+          "tags": {
+            "displayName": "ApplicationSettings"
+          },
+          "properties": {
+            "WEBSITE_NODE_DEFAULT_VERSION": "6.9.1",
+            "STORAGE_ACCOUNT": "[variables('dataStorageAccountName')]",
+            "STORAGE_KEY": "[listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageAccountName')), '2015-05-01-preview').key1]",
+            "REACT_APP_SERVICE_HOST": "[concat('https://', variables('servicesWebSiteName'), '.azurewebsites.net')]"
+          }
+        },
+        {
+          "apiVersion": "2015-04-01",
+          "name": "web",
+          "type": "config",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('dashboardWebSiteName'))]"
+          ],
+          "properties": {
+            "alwaysOn": "true"
+          }
+        }
+      ]
+    },
+    {
+      "apiVersion": "2015-04-01",
+      "name": "[variables('servicesWebSiteName')]",
+      "type": "Microsoft.Web/sites",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "cors": { "allowedOrigins": [ "*" ] },
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageAccountName'))]"
+      ],
+      "resources": [
+        {
+          "apiVersion": "2015-04-01",
+          "name": "web",
+          "type": "sourcecontrols",
+          "dependsOn": [
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageAccountName'))]",
+            "[concat('Microsoft.Web/Sites/', variables('servicesWebSiteName'), '/config/web')]",
+            "[concat('Microsoft.Web/Sites/', variables('servicesWebSiteName'), '/config/appsettings')]",
+            "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]",
+            "[resourceId('Microsoft.Web/sites', variables('servicesWebSiteName'))]"
+          ],
+          "properties": {
+            "RepoUrl": "https://github.com/cloudbeatsch/Imaginem-Services",
+            "branch": "[parameters('branch')]",
+            "IsManualIntegration": true
+          }
+        },
+        {
+          "apiVersion": "2015-04-01",
+          "name": "appsettings",
+          "type": "config",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('servicesWebSiteName'))]",
+            "[resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageAccountName'))]"
+          ],
+          "tags": {
+            "displayName": "ApplicationSettings"
+          },
+          "properties": {
+            "WEBSITE_NODE_DEFAULT_VERSION": "6.9.1",
+            "PIPELINE_DEFINITION": "[parameters('pipelineDefinition')]",
+            "STORAGE_ACCOUNT": "[variables('dataStorageAccountName')]",
+            "STORAGE_KEY": "[listkeys(resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageAccountName')), '2015-05-01-preview').key1]",
+            "AZURE_STORAGE_CONNECTION_STRING": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('dataStorageAccountName'), ';AccountKey=', listKeys(resourceId('Microsoft.Storage/storageAccounts', variables('dataStorageAccountName')), providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]).keys[0].value)]",
+            "SQL_SERVER_CONNECTION_STRING": "[concat('Server=', variables('sqlserverName'), '.database.windows.net;Initial Catalog=', variables('databaseName'), ';Persist Security Info=False;User ID=', parameters('administratorLogin'), ';Password=', parameters('administratorLoginPassword'), ';MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;')]",
+            "SQL_SERVER": "[concat('tcp:', variables('sqlserverName'), '.database.windows.net,1433')]",
+            "SQL_USERNAME": "[parameters('administratorLogin')]",
+            "SQL_PASSWORD": "[parameters('administratorLoginPassword')]",
+            "DB_NAME": "[variables('databaseName')]"
+
+          }
+        },
+        {
+          "apiVersion": "2015-04-01",
+          "name": "web",
+          "type": "config",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', variables('servicesWebSiteName'))]"
+          ],
+          "properties": {
+            "alwaysOn": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "[variables('dataStorageAccountName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-06-15",
+      "dependsOn": [],
+      "tags": {
+        "displayName": "storageAccount"
+      },
+      "properties": {
+        "accountType": "Standard_LRS"
+      }
+    },
+    {
+      "name": "[variables('sqlServerName')]",
+      "type": "Microsoft.Sql/servers",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "displayName": "SqlServer"
+      },
+      "apiVersion": "2014-04-01-preview",
+      "properties": {
+        "administratorLogin": "[parameters('administratorLogin')]",
+        "administratorLoginPassword": "[parameters('administratorLoginPassword')]"
+      },
+      "resources": [
+        {
+          "name": "[variables('databaseName')]",
+          "type": "databases",
+          "location": "[resourceGroup().location]",
+          "tags": {
+            "displayName": "Database"
+          },
+          "apiVersion": "2014-04-01-preview",
+          "dependsOn": [
+            "[variables('sqlServerName')]"
+          ],
+          "properties": {
+            "edition": "[parameters('edition')]",
+            "collation": "[parameters('collation')]",
+            "maxSizeBytes": "[parameters('maxSizeBytes')]",
+            "requestedServiceObjectiveName": "[parameters('requestedServiceObjectiveName')]"
+          }
+        },
+        {
+          "type": "firewallrules",
+          "apiVersion": "2014-04-01-preview",
+          "dependsOn": [
+            "[variables('sqlServerName')]"
+          ],
+          "location": "[resourceGroup().location]",
+          "name": "AllowAllAzureIps",
+          "properties": {
+            "endIpAddress": "0.0.0.0",
+            "startIpAddress": "0.0.0.0"
+          }
+        }
+      ]
+    }
+  ],
+  "outputs": {
+  }
+}
