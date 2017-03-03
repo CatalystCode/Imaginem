@@ -1,0 +1,15 @@
+{
+  "job_definition": {
+    "batch_id": "<<BATCHID>>",
+    "id": "<<JOBID>>",
+    "input": {
+      "image_url": "<<URL>>",
+      "image_classifiers": [ "classifier1", "classifier2" ]
+    },
+    "processing_pipeline": [ "generalclassification",  "ocr", "facedetection", "facecrop","faceprint", "facematch" ],
+    "processing_step" : 0
+  },
+    "job_output" : {
+
+    }
+}

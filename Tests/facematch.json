@@ -1,0 +1,15 @@
+{
+  "job_definition": {
+    "batch_id": "mybatchid",
+    "id": "myjobId",
+    "input": {
+      "image_url": "YOUR_IMAGE_URL",
+      "image_classifiers": [ "classifier1", "classifier2" ]
+    },
+    "processing_pipeline": [ "facedetection", "faceprint", "facematch", "pipelineoutput" ],
+    "processing_step" : 0
+  },
+    "job_output" : {
+
+    }
+}
