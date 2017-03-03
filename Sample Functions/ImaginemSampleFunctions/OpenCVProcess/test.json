@@ -1,0 +1,15 @@
+{
+  "job_definition": {
+    "batch_id": "mybatchid",
+    "id": "myjobid",
+    "input": {
+      "image_url": "image url",
+      "image_classifiers": [ "classifier1", "classifier2" ]
+    },
+    "processing_pipeline": [ "opencvtest", "devoutput" ],
+    "processing_step": 0
+
+  },
+  "job_output" : {
+  }
+}
