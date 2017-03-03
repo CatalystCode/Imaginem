@@ -1,0 +1,12 @@
+﻿{
+  "disabled": true,
+  "bindings": [
+    {
+      "name": "inputMsg",
+      "type": "queueTrigger",
+      "direction": "in",
+      "queueName": "opencvtest",
+      "connection": "AzureWebJobsStorage"
+    }
+  ]
+}

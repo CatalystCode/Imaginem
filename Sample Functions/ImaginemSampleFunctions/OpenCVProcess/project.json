@@ -1,0 +1,10 @@
+﻿{
+  "frameworks": {
+    "net46":{
+      "dependencies": {
+        "Newtonsoft.Json": "9.0.1",
+        "OpenCvSharp-AnyCPU": "2.4.10.20170126"
+      }
+    }
+  }
+}
