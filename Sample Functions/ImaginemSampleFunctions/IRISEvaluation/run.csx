@@ -13,7 +13,7 @@ using System.Web;
 using System.Runtime;
 using System.Configuration;
 
-private const string NAME = "iriseval";
+private const string ClassifierName = "iriseval";
 
 private const string APIKey = "<YOUR_PREDICTION_KEY>";
 private const string ProjectId = "<YOUR_PROJECT_ID>";
@@ -21,16 +21,17 @@ private const string IterationId = "<YOUR_ITERATION_ID>";
 
 public static async Task Run(string inputMsg, TraceWriter log)
 {
-    dynamic inputJson = JsonConvert.DeserializeObject(inputMsg);
-
-    var imageUrl = inputJson.job_definition.input.image_url.ToString();
-    var result = await PostToEvaluationApiAsync(imageUrl, ProjectId, IterationId, log);
-
-    dynamic outputJson = new { result = result };
-    PipelineHelper.Commit(inputJson, NAME, outputJson, log);
+    PipelineHelper.Process(Function, ClassifierName, inputMsg, log);
 }
 
-private static async Task<string> PostToEvaluationApiAsync(string imageUrl, string projectId, string iterationId, TraceWriter log)
+public static dynamic Function(dynamic inputJson, string imageUrl, TraceWriter log)
+{
+    var response = await PostToEvaluationApiAsync(imageUrl, log);
+
+    return JsonConvert.DeserializeObject(response);
+}
+
+private static async Task<string> PostToEvaluationApiAsync(string imageUrl, TraceWriter log)
 {
     try
     {
@@ -41,8 +42,8 @@ private static async Task<string> PostToEvaluationApiAsync(string imageUrl, stri
         client.DefaultRequestHeaders.Add("Prediction-Key", APIKey);
 
         // Request parameters
-        queryString["iterationId"] = iterationId;
-        var uri = "https://customvisionppe.azure-api.net/v1.0/Prediction/" + projectId + "/url?" + queryString;
+        queryString["iterationId"] = IterationId;
+        var uri = "https://customvisionppe.azure-api.net/v1.0/Prediction/" + ProjectId + "/url?" + queryString;
 
         var contentStr = "{\"Url\":\"" + imageUrl + "\"}";
 
